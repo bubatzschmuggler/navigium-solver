@@ -15,3 +15,9 @@ Bei den *unnecessary_checkboxes* kann man angeben welche Wortarten das Script NI
 
 ![image](https://user-images.githubusercontent.com/92476790/196914662-d08a1302-97a5-4d6f-a481-5113b48b8cbe.png)
 
+Hier ein Video vom Script im Einsatz:
+
+
+https://user-images.githubusercontent.com/92476790/196923491-e90cd19c-4d5d-4a76-9843-6a20ad45e11a.mp4
+
+Wie man im Video sieht, kann man das Quiz manuell mitten bei der Abfrage abbrechen bzw. beenden. Das erkennt das Script dann, passt sich an und endet das Script wie sonst auch (Ergebnisse speichern, Screenshot, zurück zum Hauptmenü). Natürlich kann man das Script auch einfach weiter laufen lassen und wenn es dann am Ende ist beendet es sich selber ohne, dass man irgendwas drücken muss.
