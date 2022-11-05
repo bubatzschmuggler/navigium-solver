@@ -12,8 +12,8 @@ Bei den *unnecessary_checkboxes* kann man angeben welche Wortarten das Script NI
 
 Hier ein Video vom Script im Einsatz:
 
+https://user-images.githubusercontent.com/92476790/200125029-d70c3d6c-d98e-46e4-be4f-88e855e27683.mp4
 
-
-Wie man im Video sieht, kann man das Quiz manuell mitten bei der Abfrage abbrechen bzw. beenden. Das erkennt das Script dann, passt sich an und endet das Script wie sonst auch (Ergebnisse speichern, Screenshot, zurück zum Hauptmenü). Natürlich kann man das Script auch einfach weiter laufen lassen und wenn es dann am Ende ist beendet es sich selber ohne, dass man irgendwas drücken muss.
+Wie man im Video sieht, wird das Quiz eigenständig gelöst. Die Fehler entstehen, wenn die Vokabel im Wörterbuch nicht gefunden werden kann. Dieser Fehler kann eigentlich sehr einfach behoben werden indem man die Vokabel durch jedes Pattern jagt, welche die Vokabel auf verschiedene Weisen isolieren. Dann versucht man eine API Request mit jeder extrahierten Vokabel und eines wird eine richtige Lösung zurückgeben. Da man sich dafür jedoch mit Latein Vokabeln und Regex auskennen muss wurde hier nur ein Pattern erstellt. Falls du dich jedoch mit Regex und Latein Vokabeln auskennen solltest kannst du die "search_vokabel"-Funktion um mehrere Patterns erweitern um jedesmal eine erfolgreiche Antwort von der API zu bekommen.
 
 ## Wichtig: Da dieses Script Selenium nutzt wird ein Chrome Driver benötigt der hier gedownloadet werden kann: https://chromedriver.chromium.org/downloads
