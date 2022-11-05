@@ -1,14 +1,8 @@
 # Navigium Solver
-Der Navigium Solver nutzt Navigiums Wörterbuch um den Karteikasten auf Navigium zu lösen. Dadurch bekommt man Punkte, welche jeder in der Schule sehen kann. Das Script ist nicht perfekt, deswegen "schreibt" es im Durchschnitt eine 2-3, jedoch macht es nach jeder "Session" ein Screenshot vom Ergebnis, damit man gucken kann was das Script erreicht hat während man AFK war. Der Navigium Solver nutzt Selenium für alles, bis auf das nachgucken der Wörter. Dafür hat [Anton](https://github.com/xImAnton) vorgeschlagen, einfach die Navigium Wörterbuch "API" zu nutzen. 
+Der Navigium Solver nutzt Navigiums Wörterbuch um den Karteikasten auf Navigium zu lösen. Dadurch bekommt man Punkte, welche jeder in der Schule sehen kann. Das Script ist nicht perfekt, deswegen "schreibt" es im Durchschnitt eine 2-3, jedoch macht es nach jeder "Session" ein Screenshot vom Ergebnis, damit man gucken kann was das Script erreicht hat während man AFK war. Hat man vor, länger AFK zu bleiben, kann man das Script auch mehrere "Sessions" laufen lassen. So fragt dich das Script am Anfang, wieviel "Sessions" es machen soll. Unter einer "Session" wird eine Abfrage verstanden. Der Navigium Solver nutzt Selenium für alles, bis auf das nachgucken der Wörter. Dafür hat [Anton](https://github.com/xImAnton) vorgeschlagen, einfach die Navigium Wörterbuch "API" zu nutzen. 
 Nachdem man sich eingeloggt(Navigium scheint das automatische Einloggen zu erkennen, zumindest in den letzten Testdurchläufen) hat ist das Script komplett selbstständig und man kann es laufen lassen. 
 
-### Wichtig sind außerdem noch folgende Einstellungen: 
-
-```self.page_load_delay = 6```
-
-```self.action_delay = 1```
-
-Die 2 obrigen sollte der Nutzer je nach der Stärke seines Internets einstellen, da diese die Pause angeben, die Selenium macht nachdem es 1. eine Seite geladen hat und 2. eine Aktion ausgeführt hat.
+### Wichtig ist außerdem noch folgende Einstellung: 
 
 ```self.unnecessary_checkboxes = {6, 7, 8, 9, 10, 11}```
 
@@ -19,7 +13,6 @@ Bei den *unnecessary_checkboxes* kann man angeben welche Wortarten das Script NI
 Hier ein Video vom Script im Einsatz:
 
 
-https://user-images.githubusercontent.com/92476790/196923491-e90cd19c-4d5d-4a76-9843-6a20ad45e11a.mp4
 
 Wie man im Video sieht, kann man das Quiz manuell mitten bei der Abfrage abbrechen bzw. beenden. Das erkennt das Script dann, passt sich an und endet das Script wie sonst auch (Ergebnisse speichern, Screenshot, zurück zum Hauptmenü). Natürlich kann man das Script auch einfach weiter laufen lassen und wenn es dann am Ende ist beendet es sich selber ohne, dass man irgendwas drücken muss.
 
