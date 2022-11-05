@@ -4,13 +4,28 @@ import random
 import urllib.parse
 import requests
 import selenium.common.exceptions
+import re
 
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from threading import Thread
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
+TIMEOUT = 40
+VOKABEL_PATTERN = re.compile(r"^([^(,]+).*$")
+"""
+^([^(,]+).*$
+- [^(,] = beliebiges Zeichen außer (,
+- .* = kann mit vollkommen beliebiger Zeichenkette übereinstimmen
+- () = Gruppe
+- ^...$ = Anker, ^([^(,]+) Gruppe bezieht sich auf Anfang der Zeichenkette, .*$ beliebige Zeichenkette am Ende
+"""
+
+
+# Hilfsmethoden
 
 def click_correct_button(buttons, loesungen):
     for i in buttons:
@@ -22,13 +37,39 @@ def click_correct_button(buttons, loesungen):
     random.choice(buttons).click()
 
 
-def search_vokabel(vokabel):
-    r = requests.get(
-        f"https://www.navigium.de/suchfunktion/_search?q={urllib.parse.quote(vokabel.split()[0])}&dkk=DKK_DREI")
+def does_exist(searchItem, key):
+    if searchItem.get(key):
+        return searchItem[key]
+    else:
+        return []
+
+
+def search_vokabel(vokabel, called=False):
     try:
-        return r.json()[0]["searchItems"][0]["bedeutungenFlach"]
-    except:
-        return ""
+        vokabel = VOKABEL_PATTERN.match(vokabel).group(1).strip()
+    except AttributeError:
+        pass
+    r = requests.get(
+        f"https://www.navigium.de/suchfunktion/_search?q={urllib.parse.quote(vokabel)}&dkk=DKK_DREI")
+    data = r.json()[0]
+    loesungen = []
+    for searchItem in data["searchItems"]:
+        loesungen.extend(does_exist(searchItem, "bedeutungenFlach") +
+                         does_exist(searchItem, ["schulwortschatz"][0][0]) +
+                         does_exist(searchItem, "schulwortschatzFlach"))
+    if len(loesungen) == 0 and not called:
+        return search_vokabel(vokabel.split()[0], True)
+    return loesungen
+
+
+def retry(solve_, max_attempts):
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            solve_()
+            break
+        except selenium.common.exceptions.StaleElementReferenceException:
+            attempts += 1
 
 
 class Main:
@@ -40,18 +81,25 @@ class Main:
         self.driver = webdriver.Chrome()
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=self.chrome_options)
 
-        self.page_load_delay = 4
-        self.action_delay = 1
+        self.ignore_list = [selenium.common.exceptions.ElementNotVisibleException,
+                            selenium.common.exceptions.ElementNotSelectableException]
 
-        self.unnecessary_checkboxes = {6, 7, 8, 9, 10, 11}
+        # self.unnecessary_checkboxes = {6, 7, 8, 9, 10, 11}
+        self.unnecessary_checkboxes = {}
 
-    def find_element_selenium(self, by, name, delay):
-        time.sleep(delay)
-        return self.driver.find_element(by, name)
+    # Selenium
+
+    def find_element_selenium(self, by, name, ec):
+        return WebDriverWait(self.driver, TIMEOUT, ignored_exceptions=self.ignore_list).until(
+            ec((by, name)))
+
+    def find_elements_selenium(self, by, name):
+        return WebDriverWait(self.driver, TIMEOUT, ignored_exceptions=self.ignore_list).until(
+            EC.presence_of_all_elements_located((by, name)))
 
     def load_new_page(self, url):
         self.driver.get(url)
-        time.sleep(self.page_load_delay)
+        WebDriverWait(self.driver, TIMEOUT).until(EC.presence_of_element_located((By.CLASS_NAME, "navigiumlogo")))
 
     def uncheck_items(self):
         checkboxes = []
@@ -59,73 +107,113 @@ class Main:
             i += 1
             if i in self.unnecessary_checkboxes:
                 checkboxes.append(self.find_element_selenium(By.XPATH,
-                                                             f"//*[@id=\"content\"]/div/div[2]/div[2]/div[2]/div/div[{i}]/label/input",
-                                                             0))
+                                                             f"//*[@id=\"content\"]/div/div[2]/div[2]/div[2]/div/div[{i}]/label/input", EC.element_to_be_clickable))
         for i in checkboxes:
             i.click()
 
+    def exists(self, by, name):
+        try:
+            self.driver.find_element(by, name)
+        except selenium.common.exceptions.NoSuchElementException:
+            return False
+        return True
+
+    # Vokabeln lernen
+
+    def vokabeln(self, wiederholungen: int):
+        def solve():
+            if "Was bedeutet diese Vokabel?" in self.find_element_selenium(By.TAG_NAME, "h5", EC.presence_of_element_located).get_attribute(
+                    "innerText"):
+                buttons = self.find_elements_selenium(By.CSS_SELECTOR, ".btn.btn-default.abstandlinks")
+                vokabel = self.find_element_selenium(By.XPATH,
+                                                     "/html/body/app-root/app-schriftlich/div/div/div[2]/div[1]/div/div/div/h4[1]", EC.presence_of_element_located).get_attribute(
+                    "innerText").strip()
+                loesungen = search_vokabel(vokabel)
+                click_correct_button(buttons, loesungen)
+                if int(self.find_element_selenium(By.CLASS_NAME, "col-md-5", EC.presence_of_element_located).get_attribute(
+                        "innerText").strip().replace("Noch: ", "")) > 0 or int(
+                    self.find_element_selenium(By.CLASS_NAME, "col-md-5", EC.presence_of_element_located).get_attribute(
+                        "innerText").strip().replace("Noch: ",
+                                                     "")) == -1:
+                    self.find_element_selenium(By.CSS_SELECTOR,
+                                               ".btn.btn-primary.btn-sm.ng-star-inserted", EC.element_to_be_clickable).click()  # Nächste Vokabel
+                else:
+                    self.stop(wiederholungen)
+
+        while int(self.find_element_selenium(By.CLASS_NAME, "col-md-5", EC.presence_of_element_located).get_attribute(
+                "innerText").strip().replace("Noch: ", "")) > 0 or int(
+            self.find_element_selenium(By.CLASS_NAME, "col-md-5", EC.presence_of_element_located).get_attribute(
+                "innerText").strip().replace("Noch: ",
+                                             "")) == -1:  # Während mehr als 0 oder -1(Initialisierungswert) Vokabeln zu lernen sind
+            try:
+                solve()
+            except selenium.common.exceptions.StaleElementReferenceException:
+                retry(solve, 2)
+        else:
+            self.stop(wiederholungen)
+
+    # Ablauf
+
+    def login(self):
+        print("Bitte einloggen...")
+        self.driver.get("https://www.navigium.de/schule/login/mainmenu.html")
+        while not WebDriverWait(self.driver, TIMEOUT).until(EC.presence_of_element_located((By.CLASS_NAME, "navigiumlogo"))):
+            pass
+
+    def start_quiz(self, wiederholungen: int):
+        self.load_new_page("https://www.navigium.de/schule/karteikasten")
+
+        self.find_element_selenium(By.ID, "rbMP", EC.element_to_be_clickable).click()
+
+        self.find_element_selenium(By.ID, "cbNicht", EC.element_to_be_clickable).click()
+
+        self.uncheck_items()
+
+        self.find_element_selenium(By.ID, "btnSchr", EC.element_to_be_clickable).click()
+
+        while not "Vokabeltrainer" in self.find_element_selenium(By.TAG_NAME, "h3", EC.presence_of_element_located).get_attribute(
+                    "innerText"):
+            pass
+        Thread(target=self.vokabeln, args=[wiederholungen]).start()
+
+    def stop(self, wiederholungen, instant=False):
+        wiederholungen -= 1
+        self.end_quiz(wiederholungen, instant)
+
+    def end_quiz(self, wiederholungen: int, instant):
+        if instant:
+            self.exit()
+        elif wiederholungen == 0 and not instant:
+            print("Beende Vokabel lernen...")
+            try:
+                self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-danger-outline.btn-sm.pull-right", EC.element_to_be_clickable).click()
+            except selenium.common.exceptions.NoSuchElementException:
+                pass
+            self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-primary.btn-sm.ng-star-inserted", EC.element_to_be_clickable).click()
+            self.driver.save_screenshot("result.png")
+            self.find_element_selenium(By.CSS_SELECTOR,
+                                       ".btn.btn-primary-outline.btn-sm.hidden-print.ng-star-inserted", EC.element_to_be_clickable).click()
+            self.exit()
+        elif wiederholungen > 0 and not instant:
+            self.main(wiederholungen)
+
     def exit(self):
-        time.sleep(10)
         print("Wird beendet...")
         self.driver.quit()
         sys.exit(0)
 
-    def end_quiz(self):
-        print("Beende Vokabel lernen...")
+    def main(self, wiederholungen: int):
+        self.login()
         try:
-            self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-danger-outline.btn-sm.pull-right",
-                                       self.action_delay).click()
-        except selenium.common.exceptions.NoSuchElementException:
-            pass
-        self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-primary.btn-sm.ng-star-inserted",
-                                   self.action_delay).click()
-        self.driver.save_screenshot("result.png")
-        self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-primary-outline.btn-sm.hidden-print.ng-star-inserted",
-                                   self.action_delay).click()
-        self.exit()
-
-    def vokabeln(self):
-        time.sleep(6)
-        try:
-            while "Was bedeutet diese Vokabel?" in self.find_element_selenium(By.TAG_NAME, "h5", 0).get_attribute(
-                    "innerText"):
-                buttons = self.driver.find_elements(By.CSS_SELECTOR, ".btn.btn-default.abstandlinks")
-                vokabel = self.find_element_selenium(By.XPATH,
-                                                     "/html/body/app-root/app-schriftlich/div/div/div[2]/div[1]/div/div/div/h4[1]",
-                                                     1).get_attribute("innerText").strip()
-                loesungen = search_vokabel(vokabel)
-                if "Was bedeutet diese Vokabel?" in self.find_element_selenium(By.TAG_NAME, "h5", 0).get_attribute(
-                        "innerText"):
-                    click_correct_button(buttons, loesungen)
-                    time.sleep(0.5)
-                    self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-primary.btn-sm.ng-star-inserted",
-                                               self.action_delay).click()
-                else:
-                    self.end_quiz()
-        except selenium.common.exceptions.NoSuchElementException:
-            self.end_quiz()
-
-    def main(self):
-        self.load_new_page("https://www.navigium.de/schule/login/mainmenu.html")
-
-        print("Bitte einloggen...")
-        while True:
+            self.start_quiz(wiederholungen)
+        except selenium.common.exceptions.ElementClickInterceptedException:
+            retry(lambda: self.start_quiz(wiederholungen), 2)
+        except selenium.common.exceptions.TimeoutException:
             try:
-                self.find_element_selenium(By.CLASS_NAME, "iconblue", 0)
-                self.load_new_page("https://www.navigium.de/schule/karteikasten")
-                break
-            except:
-                pass
-
-        self.find_element_selenium(By.ID, "rbMP", self.action_delay).click()
-
-        self.find_element_selenium(By.ID, "cbNicht", self.action_delay).click()
-
-        self.uncheck_items()
-
-        self.find_element_selenium(By.ID, "btnSchr", self.action_delay).click()
-
-        Thread(target=self.vokabeln).start()
+                retry(lambda: self.start_quiz(wiederholungen), 2)
+            except selenium.common.exceptions.TimeoutException:
+                print("Keine Vokabeln zu lernen")
+                self.stop(wiederholungen, True)  # Einstellungen funktionieren nicht, da es keine Vokabeln zu lernen gibt
 
 
 def start():
@@ -137,9 +225,14 @@ def start():
 ██║ ╚████║██║  ██║ ╚████╔╝ ██║╚██████╔╝██║╚██████╔╝██║ ╚═╝ ██║    ███████║╚██████╔╝███████╗╚████╔╝ ███████╗██║  ██║
 ╚═╝  ╚═══╝╚═╝  ╚═╝  ╚═══╝  ╚═╝ ╚═════╝ ╚═╝ ╚═════╝ ╚═╝     ╚═╝    ╚══════╝ ╚═════╝ ╚══════╝ ╚═══╝  ╚══════╝╚═╝  ╚═╝                                                                                                                                                       
     """)
+    wiederholungen = input(
+        "Wie viele Sessions sollen gemacht werden? (Desto mehr Sessions, desto wahrscheinlicher werden Fehler!)\n")
     main = Main()
-    main.main()
+    main.main(int(wiederholungen))
 
 
 if __name__ == '__main__':
-    start()
+    try:
+        start()
+    except selenium.common.exceptions.NoSuchWindowException:
+        exit(0)
