@@ -87,6 +87,11 @@ class Main:
         # self.unnecessary_checkboxes = {6, 7, 8, 9, 10, 11}
         self.unnecessary_checkboxes = {}
 
+        self.unnecessary_kapitel = {3, 4, 5}
+
+        self.username = "username"
+        self.password = "password"
+
     # Selenium
 
     def find_element_selenium(self, by, name, ec):
@@ -100,6 +105,7 @@ class Main:
     def load_new_page(self, url):
         self.driver.get(url)
         WebDriverWait(self.driver, TIMEOUT).until(EC.presence_of_element_located((By.CLASS_NAME, "navigiumlogo")))
+        time.sleep(0.5)
 
     def uncheck_items(self):
         checkboxes = []
@@ -107,7 +113,8 @@ class Main:
             i += 1
             if i in self.unnecessary_checkboxes:
                 checkboxes.append(self.find_element_selenium(By.XPATH,
-                                                             f"//*[@id=\"content\"]/div/div[2]/div[2]/div[2]/div/div[{i}]/label/input", EC.element_to_be_clickable))
+                                                             f"//*[@id=\"content\"]/div/div[2]/div[2]/div[2]/div/div[{i}]/label/input",
+                                                             EC.element_to_be_clickable))
         for i in checkboxes:
             i.click()
 
@@ -118,25 +125,38 @@ class Main:
             return False
         return True
 
+    def click_checkboxes(self, by, class_name):
+        for checkbox in self.find_elements_selenium(by,
+                                                    class_name):
+            try:
+                checkbox.click()
+            except:
+                pass
+            time.sleep(1)  # Warten, da Bestätigung aufpoppt
+
     # Vokabeln lernen
 
     def vokabeln(self, wiederholungen: int):
         def solve():
-            if "Was bedeutet diese Vokabel?" in self.find_element_selenium(By.TAG_NAME, "h5", EC.presence_of_element_located).get_attribute(
+            if "Was bedeutet diese Vokabel?" in self.find_element_selenium(By.TAG_NAME, "h5",
+                                                                           EC.presence_of_element_located).get_attribute(
                     "innerText"):
                 buttons = self.find_elements_selenium(By.CSS_SELECTOR, ".btn.btn-default.abstandlinks")
                 vokabel = self.find_element_selenium(By.XPATH,
-                                                     "/html/body/app-root/app-schriftlich/div/div/div[2]/div[1]/div/div/div/h4[1]", EC.presence_of_element_located).get_attribute(
+                                                     "/html/body/app-root/app-schriftlich/div/div/div[2]/div[1]/div/div/div/h4[1]",
+                                                     EC.presence_of_element_located).get_attribute(
                     "innerText").strip()
                 loesungen = search_vokabel(vokabel)
                 click_correct_button(buttons, loesungen)
-                if int(self.find_element_selenium(By.CLASS_NAME, "col-md-5", EC.presence_of_element_located).get_attribute(
+                if int(self.find_element_selenium(By.CLASS_NAME, "col-md-5",
+                                                  EC.presence_of_element_located).get_attribute(
                         "innerText").strip().replace("Noch: ", "")) > 0 or int(
                     self.find_element_selenium(By.CLASS_NAME, "col-md-5", EC.presence_of_element_located).get_attribute(
                         "innerText").strip().replace("Noch: ",
                                                      "")) == -1:
                     self.find_element_selenium(By.CSS_SELECTOR,
-                                               ".btn.btn-primary.btn-sm.ng-star-inserted", EC.element_to_be_clickable).click()  # Nächste Vokabel
+                                               ".btn.btn-primary.btn-sm.ng-star-inserted",
+                                               EC.element_to_be_clickable).click()  # Nächste Vokabel
                 else:
                     self.stop(wiederholungen)
 
@@ -155,9 +175,15 @@ class Main:
     # Ablauf
 
     def login(self):
-        print("Bitte einloggen...")
         self.driver.get("https://www.navigium.de/schule/login/mainmenu.html")
-        while not WebDriverWait(self.driver, TIMEOUT).until(EC.presence_of_element_located((By.CLASS_NAME, "navigiumlogo"))):
+        while not WebDriverWait(self.driver, TIMEOUT).until(EC.presence_of_element_located((By.ID, "password"))):
+            pass
+        self.find_element_selenium(By.ID, "name", EC.presence_of_element_located).send_keys(self.username)
+        self.find_element_selenium(By.ID, "password", EC.presence_of_element_located).send_keys(self.password)
+        time.sleep(0.5)
+        self.find_element_selenium(By.ID, "submitbutton", EC.element_to_be_clickable).click()
+        while not WebDriverWait(self.driver, TIMEOUT).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "navigiumlogo"))):
             pass
 
     def start_quiz(self, wiederholungen: int):
@@ -171,8 +197,9 @@ class Main:
 
         self.find_element_selenium(By.ID, "btnSchr", EC.element_to_be_clickable).click()
 
-        while not "Vokabeltrainer" in self.find_element_selenium(By.TAG_NAME, "h3", EC.presence_of_element_located).get_attribute(
-                    "innerText"):
+        while not "Vokabeltrainer" in self.find_element_selenium(By.TAG_NAME, "h3",
+                                                                 EC.presence_of_element_located).get_attribute(
+                "innerText"):
             pass
         Thread(target=self.vokabeln, args=[wiederholungen]).start()
 
@@ -186,24 +213,28 @@ class Main:
         elif wiederholungen == 0 and not instant:
             print("Beende Vokabel lernen...")
             try:
-                self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-danger-outline.btn-sm.pull-right", EC.element_to_be_clickable).click()
+                self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-danger-outline.btn-sm.pull-right",
+                                           EC.element_to_be_clickable).click()
             except selenium.common.exceptions.NoSuchElementException:
                 pass
-            self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-primary.btn-sm.ng-star-inserted", EC.element_to_be_clickable).click()
+            self.find_element_selenium(By.CSS_SELECTOR, ".btn.btn-primary.btn-sm.ng-star-inserted",
+                                       EC.element_to_be_clickable).click()
             self.driver.save_screenshot("result.png")
             self.find_element_selenium(By.CSS_SELECTOR,
-                                       ".btn.btn-primary-outline.btn-sm.hidden-print.ng-star-inserted", EC.element_to_be_clickable).click()
+                                       ".btn.btn-primary-outline.btn-sm.hidden-print.ng-star-inserted",
+                                       EC.element_to_be_clickable).click()
             self.exit()
         elif wiederholungen > 0 and not instant:
-            self.main(wiederholungen)
+            self.main_vokabeln(wiederholungen)
 
     def exit(self):
         print("Wird beendet...")
         self.driver.quit()
         sys.exit(0)
 
-    def main(self, wiederholungen: int):
-        self.login()
+    def main_vokabeln(self, wiederholungen: int, first=False):
+        if first:
+            self.login()
         try:
             self.start_quiz(wiederholungen)
         except selenium.common.exceptions.ElementClickInterceptedException:
@@ -213,22 +244,65 @@ class Main:
                 retry(lambda: self.start_quiz(wiederholungen), 2)
             except selenium.common.exceptions.TimeoutException:
                 print("Keine Vokabeln zu lernen")
-                self.stop(wiederholungen, True)  # Einstellungen funktionieren nicht, da es keine Vokabeln zu lernen gibt
+                self.stop(wiederholungen,
+                          True)  # Einstellungen funktionieren nicht, da es keine Vokabeln zu lernen gibt
+
+    def main_karteikasten(self, name):
+        self.login()
+
+        self.load_new_page("https://www.navigium.de/schule/karteikasten")
+        self.find_element_selenium(By.CLASS_NAME, "btn.btn-primary.btn-sm.pull-right.ng-star-inserted",
+                                   EC.presence_of_element_located).click()
+        self.find_element_selenium(By.ID, "inputWeitererKasten", EC.presence_of_element_located).send_keys(name)
+        self.find_element_selenium(By.ID, "btnDoKKanlegen", EC.element_to_be_clickable).click()
+        time.sleep(0.5)
+        self.find_element_selenium(By.ID, "btnAuffuellen", EC.element_to_be_clickable).click()
+        for button in self.find_elements_selenium(By.CLASS_NAME,
+                                                  "p-button-label.ng-star-inserted"):  # p-button-label.ng-star-inserted
+            button.click()
+            if button.get_attribute("innerText") == "Pontes":
+                self.click_checkboxes(By.TAG_NAME,
+                                      "p-checkbox")  # Alle Pontes Lektionen, ng-untouched.ng-pristine.ng-valid.ng-star-inserted
+            elif button.get_attribute("innerText") == "Navigium":
+                i = 0
+                for kapitel in self.find_elements_selenium(By.CLASS_NAME,
+                                                           "p-button.p-component.p-button-icon-only.p-button-text.p-button-rounded.p-button-plain.p-ml-3"):  # p-button p-component p-button-icon-only p-button-text p-button-rounded p-button-plain p-ml-3, p-button-text.p-button-rounded.p-button-plain.p-ml-3 p-button.p-component.p-button-icon-only
+                    if i not in self.unnecessary_kapitel:
+                        kapitel.click()  # Kapitel aufklappen bzw. laden
+                    i += 1
+                self.click_checkboxes(By.CLASS_NAME,
+                                      "ng-untouched.ng-pristine.ng-valid.ng-star-inserted")  # Alle sichtbaren Checkboxen klicken
 
 
 def start():
-    print("""\
+    option = input(r"""\
 ███╗   ██╗ █████╗ ██╗   ██╗██╗ ██████╗ ██╗██╗   ██╗███╗   ███╗    ███████╗ ██████╗ ██╗    ██╗   ██╗███████╗██████╗ 
 ████╗  ██║██╔══██╗██║   ██║██║██╔════╝ ██║██║   ██║████╗ ████║    ██╔════╝██╔═══██╗██║    ██║   ██║██╔════╝██╔══██╗
 ██╔██╗ ██║███████║██║   ██║██║██║  ███╗██║██║   ██║██╔████╔██║    ███████╗██║   ██║██║    ██║   ██║█████╗  ██████╔╝
 ██║╚██╗██║██╔══██║╚██╗ ██╔╝██║██║   ██║██║██║   ██║██║╚██╔╝██║    ╚════██║██║   ██║██║    ╚██╗ ██╔╝██╔══╝  ██╔══██╗
 ██║ ╚████║██║  ██║ ╚████╔╝ ██║╚██████╔╝██║╚██████╔╝██║ ╚═╝ ██║    ███████║╚██████╔╝███████╗╚████╔╝ ███████╗██║  ██║
-╚═╝  ╚═══╝╚═╝  ╚═╝  ╚═══╝  ╚═╝ ╚═════╝ ╚═╝ ╚═════╝ ╚═╝     ╚═╝    ╚══════╝ ╚═════╝ ╚══════╝ ╚═══╝  ╚══════╝╚═╝  ╚═╝                                                                                                                                                       
-    """)
-    wiederholungen = input(
-        "Wie viele Sessions sollen gemacht werden? (Desto mehr Sessions, desto wahrscheinlicher werden Fehler!)\n")
+╚═╝  ╚═══╝╚═╝  ╚═╝  ╚═══╝  ╚═╝ ╚═════╝ ╚═╝ ╚═════╝ ╚═╝     ╚═╝    ╚══════╝ ╚═════╝ ╚══════╝ ╚═══╝  ╚══════╝╚═╝  ╚═╝
+                        =========================================================                    
+                        ||         ____        __  _                           ||      
+                        ||        / __ \____  / /_(_)___  ____  ___  ____      || 
+                        ||       / / / / __ \/ __/ / __ \/ __ \/ _ \/ __ \     ||  
+                        ||      / /_/ / /_/ / /_/ / /_/ / / / /  __/ / / /     ||  
+                        ||      \____/ .___/\__/_/\____/_/ /_/\___/_/ /_/      ||  
+                        ||          /_/                                        ||         
+                        ||                                                     ||  
+                        ||         1. Aktuellen Karteikasten lernen            ||  
+                        ||         2. Neuen Karteikasten anlegen               ||  
+                        ||                                                     ||
+                        =========================================================
+>>> """)
     main = Main()
-    main.main(int(wiederholungen))
+    if option == "1":
+        wiederholungen = input(
+            "Wie viele Sessions sollen gemacht werden? (Desto mehr Sessions, desto wahrscheinlicher werden Fehler!)\n")
+        main.main_vokabeln(int(wiederholungen), True)
+    else:
+        name = input("Wie soll der neue Karteikasten heißen?\n")
+        main.main_karteikasten(name)
 
 
 if __name__ == '__main__':
