@@ -13,9 +13,13 @@ Die *unnecessary_kapitel* geben an, welche Kapitel beim Auffüllen vom Karteikas
 
 ![image](https://user-images.githubusercontent.com/92476790/196914662-d08a1302-97a5-4d6f-a481-5113b48b8cbe.png)
 
-Hier ein Video vom Script im Einsatz:
+Hier ein Video vom Script beim Vokabeln lernen:
 
 https://user-images.githubusercontent.com/92476790/200125029-d70c3d6c-d98e-46e4-be4f-88e855e27683.mp4
+
+Hier ein Video vom Script beim Anlegen eines neuen Karteikastens:
+
+https://user-images.githubusercontent.com/92476790/205128502-d406697b-8848-4ba6-b5dd-537db6630d1b.mp4
 
 Mit der neuen "UI" sieht das Script nun wie folgt aus:
 
