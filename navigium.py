@@ -113,8 +113,8 @@ class Main:
 
         self.retries = 10
 
-        self.username = "gabhab"
-        self.password = "30012008"
+        self.username = "username"
+        self.password = "password"
 
     # Selenium
 
